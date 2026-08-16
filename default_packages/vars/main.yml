@@ -1,0 +1,41 @@
+---
+# vars file for default_packages
+packages_to_install:
+  - mc
+  - curl
+  - wget
+  - vim
+  - htop
+  - tmux
+  - net-tools
+  - software-properties-common
+  - apt-transport-https
+  - ca-certificates
+  - gnupg2
+  - dnsutils
+  - parted
+  - openssh-server
+  - sshpass
+  - build-essential
+  - make
+  - gcc
+  - libssl-dev
+  - pkg-config
+  - fail2ban
+  - unattended-upgrades
+  - ufw
+  - acl
+  - rsync
+  - rsyslog
+  - screen
+  - zip
+  - unzip
+  - bzip2
+  - xz-utils
+  - python3
+  - python3-pip
+  - python3-venv
+  - python3-dev
+
+zabbix_server_addr: 192.168.0.90
+

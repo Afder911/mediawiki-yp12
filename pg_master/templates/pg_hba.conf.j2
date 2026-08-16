@@ -1,0 +1,19 @@
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+# Local connections
+local   all             postgres                                peer
+local   all             all                                     peer
+
+# IPv4 local connections
+host    all             all             127.0.0.1/32                                md5
+
+# MediaWiki application connections
+host    {{ wiki_db }}   {{ wiki_user }} {{ hostvars['mediawiki-01'].ansible_host }}/32          md5
+host    {{ wiki_db }}   {{ wiki_user }} {{ hostvars['mediawiki-02'].ansible_host }}/32          md5
+
+# IPv6 local connections
+host    all             all             ::1/128                 md5
+
+# Replication connections from replica hosts
+host    replication     {{ replication_user }}  {{ hostvars['pg-replica'].ansible_host }}/32   md5
+

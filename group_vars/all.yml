@@ -1,0 +1,23 @@
+# ===================================================
+# Общие переменные
+# ===================================================
+mediawiki_download_url: "https://releases.wikimedia.org/mediawiki/1.42/mediawiki-1.42.1.tar.gz"
+
+mediawiki_install_dir: /var/www/mediawiki
+mediawiki_owner: www-data
+mediawiki_group: www-data
+
+postgres_version: 16
+postgres_cluster: main
+postgres_port: 5432
+
+replication_user: replicator
+replication_password: 12345
+
+wiki_db: my_wiki
+wiki_user: wikiuser
+wiki_password: 12345
+
+pg_data_dir: "/var/lib/postgresql/{{ postgres_version }}/{{ postgres_cluster }}"
+pg_conf_dir: "/etc/postgresql/{{ postgres_version }}/{{ postgres_cluster }}"
+

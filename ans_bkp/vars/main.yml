@@ -1,0 +1,43 @@
+---
+# ===================================================
+# vars file for ans_bkp
+# ===================================================
+backup_root_dir: /srv/backups
+backup_db_dir: "{{ backup_root_dir }}/postgresql"
+backup_fs_dir: "{{ backup_root_dir }}/mediawiki"
+backup_script_dir: /opt/backup
+backup_log_dir: /var/log/backup
+
+backup_source_hosts:
+  - "{{ hostvars['pg-master'].ansible_host }}"
+  - "{{ hostvars['mediawiki-01'].ansible_host }}"
+
+backup_source_users:
+  pg_master: filippmolokov
+  mediawiki_01: filippmolokov
+
+backup_ssh_key_path: /root/.ssh/backup_id_ed25519
+backup_ssh_user: filippmolokov
+
+backup_db_host: "{{ hostvars['pg-master'].ansible_host }}"
+backup_db_name: "{{ wiki_db }}"
+backup_db_port: "{{ postgres_port }}"
+
+backup_mediawiki_host: "{{ hostvars['mediawiki-01'].ansible_host }}"
+backup_mediawiki_path: /var/www/mediawiki
+
+backup_keep_days_db: 7
+backup_keep_days_fs: 7
+
+backup_db_schedule_minute: "0"
+backup_db_schedule_hour: "2"
+
+backup_fs_schedule_minute: "30"
+backup_fs_schedule_hour: "2"
+
+packages_for_ans_bkp:
+  - openssh-client
+  - cron
+  - gzip
+  - tar
+

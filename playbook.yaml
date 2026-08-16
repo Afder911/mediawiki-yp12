@@ -1,0 +1,80 @@
+---
+# ===================================================
+# Установка стандартных пакетов на все машины
+# ===================================================
+- name: default settings
+  hosts: all
+  roles:
+    - role: default_packages
+  tags:
+    - install_packages
+
+# ===================================================
+# Настройка машины с Ansible и резервными копиями
+# ===================================================
+- name: configure ans_bkp
+  hosts: ans_bkp_group
+  roles:
+    - role: ans_bkp
+  tags:
+    - configure_ans_bkp
+
+# ===================================================
+# Настройка мониторинга Zabbix
+# ===================================================
+- name: configure zbx_mon
+  hosts: zabbix_group
+  roles:
+    - role: zbx_mon
+  tags:
+    - configure_zbx_mon
+
+# ===================================================
+# Настройка PostgreSQL (master)
+# ===================================================
+- name: configure pg_master
+  hosts: pg_master_group
+  roles:
+    - role: pg_master
+  tags:
+    - configure_pg_master
+
+# ===================================================
+# Настройка PostgreSQL (replica)
+# ===================================================
+- name: configure pg_replica
+  hosts: pg_replica_group
+  roles:
+    - role: pg_replica
+  tags:
+    - configure_pg_replica
+
+# ===================================================
+# Настройка MediaWiki 01
+# ===================================================
+- name: configure mediawiki_01
+  hosts: mediawiki_01_group
+  roles:
+    - role: mediawiki_01
+  tags:
+    - configure_mediawiki_01
+
+# ===================================================
+# Настройка MediaWiki 02
+# ===================================================
+- name: configure mediawiki_02
+  hosts: mediawiki_02_group
+  roles:
+    - role: mediawiki_02
+  tags:
+    - configure_mediawiki_02
+
+# ===================================================
+# Настройка балансировщика Nginx
+# ===================================================
+- name: configure nginx_lb
+  hosts: nginx_group
+  roles:
+    - role: nginx_lb
+  tags:
+    - configure_nginx_lb

@@ -1,0 +1,136 @@
+---
+# ===================================================
+# tasks file for mediawiki_02
+# ===================================================
+- name: install nginx and php packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - "{{ packages_for_mediawiki_02 }}"
+
+- name: ensure nginx is started
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: ensure php-fpm is started
+  ansible.builtin.service:
+    name: "{{ php_fpm_service }}"
+    state: started
+    enabled: true
+
+- name: download mediawiki archive
+  ansible.builtin.get_url:
+    url: "{{ mediawiki_download_url }}"
+    dest: "{{ mediawiki_archive_path }}"
+    mode: "0644"
+
+- name: extract mediawiki release
+  ansible.builtin.unarchive:
+    src: "{{ mediawiki_archive_path }}"
+    dest: "{{ mediawiki_extract_parent }}"
+    remote_src: true
+    creates: "{{ mediawiki_release_dir }}"
+
+- name: create symlink to mediawiki install dir
+  ansible.builtin.file:
+    src: "{{ mediawiki_release_dir }}"
+    dest: "{{ mediawiki_install_dir }}"
+    state: link
+    force: true
+
+- name: set ownership on mediawiki files
+  ansible.builtin.file:
+    path: "{{ mediawiki_release_dir }}"
+    owner: "{{ mediawiki_owner }}"
+    group: "{{ mediawiki_group }}"
+    recurse: true
+
+- name: deploy nginx config for mediawiki
+  ansible.builtin.template:
+    src: mediawiki.nginx.conf.j2
+    dest: "/etc/nginx/sites-available/mediawiki.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart nginx
+
+- name: enable mediawiki nginx site
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/mediawiki.conf"
+    dest: "/etc/nginx/sites-enabled/mediawiki.conf"
+    state: link
+    force: true
+  notify: Restart nginx
+
+- name: remove default nginx site
+  ansible.builtin.file:
+    path: "/etc/nginx/sites-enabled/default"
+    state: absent
+  notify: Restart nginx
+
+- name: check that LocalSettings.php exists on mediawiki-01
+  ansible.builtin.stat:
+    path: "{{ mediawiki_localsettings_path }}"
+  delegate_to: "{{ mediawiki_primary_app_host }}"
+  vars:
+    ansible_user: "filippmolokov"
+  register: primary_localsettings
+
+- name: fail if LocalSettings.php is missing on mediawiki-01
+  ansible.builtin.fail:
+    msg: "LocalSettings.php not found on {{ mediawiki_primary_app_host }}. Install mediawiki_1 first."
+  when: not primary_localsettings.stat.exists
+
+- name: read LocalSettings.php from mediawiki-01
+  ansible.builtin.slurp:
+    src: "{{ mediawiki_localsettings_path }}"
+  delegate_to: "{{ mediawiki_primary_app_host }}"
+  vars:
+    ansible_user: "filippmolokov"
+    ansible_become: yes
+  register: primary_localsettings_content
+
+- name: copy LocalSettings.php to mediawiki_2
+  ansible.builtin.copy:
+    dest: "{{ mediawiki_localsettings_path }}"
+    content: "{{ primary_localsettings_content.content | b64decode }}"
+    owner: "{{ mediawiki_owner }}"
+    group: "{{ mediawiki_group }}"
+    mode: "0600"
+
+- name: wait for http on mediawiki host
+  ansible.builtin.wait_for:
+    host: "127.0.0.1"
+    port: 80
+    timeout: 30
+
+- name: check that LocalSettings.php exists locally
+  ansible.builtin.stat:
+    path: "{{ mediawiki_localsettings_path }}"
+  register: final_localsettings
+
+- name: fail if LocalSettings.php was not copied
+  ansible.builtin.fail:
+    msg: "LocalSettings.php is missing on mediawiki-02"
+  when: not final_localsettings.stat.exists
+
+- name: check mediawiki main page over http
+  ansible.builtin.uri:
+    url: "http://127.0.0.1/"
+    method: GET
+    status_code: [200, 301, 302]
+    return_content: false
+    follow_redirects: none
+  register: mediawiki_http_check
+
+- name: Check that response contains MediaWiki
+  ansible.builtin.assert:
+    that:
+      - mediawiki_http_check.status in [200, 301, 302]
+    fail_msg: "MediaWiki HTTP check failed on mediawiki_2"
+    success_msg: "MediaWiki is reachable on mediawiki_2"
+
+

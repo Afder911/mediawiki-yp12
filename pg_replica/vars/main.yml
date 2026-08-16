@@ -1,0 +1,17 @@
+---
+# ===================================================
+# vars file for pg_replica
+# ===================================================
+postgres_listen_addresses: "*"
+postgres_hot_standby: "on"
+
+primary_host: "{{ hostvars['pg-master'].ansible_host }}"
+primary_port: "{{ postgres_port }}"
+
+force_reinit_replica: false
+
+packages_for_postgresql:
+  - postgresql
+  - acl
+  - python3-psycopg2
+

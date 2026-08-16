@@ -1,0 +1,43 @@
+---
+# ===================================================
+# vars file for mediawiki_01
+# ===================================================
+mediawiki_server_name: mediawiki-01
+mediawiki_server_url: "http://{{ hostvars['nginx-lb'].public_ip }}"
+
+mediawiki_site_name: "Company Wiki"
+mediawiki_admin_user: "wikiadmin"
+mediawiki_admin_password: Password12345
+
+mediawiki_language: "ru"
+
+mediawiki_db_type: "postgres"
+mediawiki_db_host: "{{ hostvars['pg-master'].ansible_host }}"
+mediawiki_db_port: "{{ postgres_port }}"
+mediawiki_db_name: "{{ wiki_db }}"
+mediawiki_db_user: "{{ wiki_user }}"
+mediawiki_db_password: "{{ wiki_password }}"
+
+mediawiki_archive_path: /tmp/mediawiki.tar.gz
+mediawiki_extract_parent: /var/www
+mediawiki_release_dir: "/var/www/mediawiki-1.42.1"
+
+php_fpm_service: php8.3-fpm
+php_fpm_socket: /run/php/php8.3-fpm.sock
+
+mediawiki_run_installer: true
+
+packages_for_mediawiki_01:
+  - nginx
+  - php
+  - php-fpm
+  - php-intl
+  - php-mbstring
+  - php-xml
+  - php-apcu
+  - php-curl
+  - php-pgsql
+  - php-cli
+  - php-zip
+  - php-gd
+

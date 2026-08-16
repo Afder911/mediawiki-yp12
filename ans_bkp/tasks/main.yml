@@ -1,0 +1,133 @@
+---
+# ===================================================
+# tasks file for ans_bkp
+# ===================================================
+- name: install backup packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop:
+    - "{{ packages_for_ans_bkp }}"
+
+- name: ensure backup directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ backup_root_dir }}"
+    - "{{ backup_db_dir }}"
+    - "{{ backup_fs_dir }}"
+    - "{{ backup_script_dir }}"
+    - "{{ backup_log_dir }}"
+    - "/root/.ssh"
+
+- name: generate ssh key for backup host if absent
+  ansible.builtin.command: >
+    ssh-keygen -t ed25519 -f {{ backup_ssh_key_path }} -N ''
+  args:
+    creates: "{{ backup_ssh_key_path }}"
+
+- name: read backup host public key
+  ansible.builtin.slurp:
+    src: "{{ backup_ssh_key_path }}.pub"
+  register: backup_pubkey_raw
+
+- name: set decoded backup public key fact
+  ansible.builtin.set_fact:
+    backup_pubkey: "{{ backup_pubkey_raw.content | b64decode | trim }}"
+
+- name: ensure .ssh directory exists on pg-master
+  ansible.builtin.file:
+    path: "/home/{{ backup_ssh_user }}/.ssh"
+    state: directory
+    owner: "{{ backup_ssh_user }}"
+    group: "{{ backup_ssh_user }}"
+    mode: "0700"
+  delegate_to: "{{ hostvars['pg-master'].ansible_host }}"
+  vars:
+    ansible_user: "{{ backup_ssh_user }}"
+  become: true
+
+- name: Ensure backup key is authorized on pg-master
+  ansible.builtin.lineinfile:
+    path: "/home/{{ backup_ssh_user }}/.ssh/authorized_keys"
+    line: "{{ backup_pubkey }}"
+    create: true
+    owner: "{{ backup_ssh_user }}"
+    group: "{{ backup_ssh_user }}"
+    mode: "0600"
+    state: present
+  delegate_to: "{{ hostvars['pg-master'].ansible_host }}"
+  vars:
+    ansible_user: "{{ backup_ssh_user }}"
+  become: true
+
+- name: ensure .ssh directory exists on mediawiki-01
+  ansible.builtin.file:
+    path: "/home/{{ backup_ssh_user }}/.ssh"
+    state: directory
+    owner: "{{ backup_ssh_user }}"
+    group: "{{ backup_ssh_user }}"
+    mode: "0700"
+  delegate_to: "{{ hostvars['mediawiki-01'].ansible_host }}"
+  vars:
+    ansible_user: "{{ backup_ssh_user }}"
+  become: true
+
+- name: ensure backup key is authorized on mediawiki-01
+  ansible.builtin.lineinfile:
+    path: "/home/{{ backup_ssh_user }}/.ssh/authorized_keys"
+    line: "{{ backup_pubkey }}"
+    create: true
+    owner: "{{ backup_ssh_user }}"
+    group: "{{ backup_ssh_user }}"
+    mode: "0600"
+    state: present
+  delegate_to: "{{ hostvars['mediawiki-01'].ansible_host }}"
+  vars:
+    ansible_user: "{{ backup_ssh_user }}"
+  become: true
+
+- name: deploy postgresql backup script
+  ansible.builtin.template:
+    src: backup_db.sh.j2
+    dest: "{{ backup_script_dir }}/backup_db.sh"
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: deploy mediawiki filesystem backup script
+  ansible.builtin.template:
+    src: backup_mediawiki_fs.sh.j2
+    dest: "{{ backup_script_dir }}/backup_mediawiki_fs.sh"
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: create cron job for postgresql backup
+  ansible.builtin.cron:
+    name: "PostgreSQL backup"
+    user: root
+    minute: "{{ backup_db_schedule_minute }}"
+    hour: "{{ backup_db_schedule_hour }}"
+    job: "{{ backup_script_dir }}/backup_db.sh >> {{ backup_log_dir }}/backup_db.log 2>&1"
+
+- name: create cron job for mediawiki filesystem backup
+  ansible.builtin.cron:
+    name: "MediaWiki filesystem backup"
+    user: root
+    minute: "{{ backup_fs_schedule_minute }}"
+    hour: "{{ backup_fs_schedule_hour }}"
+    job: "{{ backup_script_dir }}/backup_mediawiki_fs.sh >> {{ backup_log_dir }}/backup_mediawiki_fs.log 2>&1"
+
+- name: run postgresql backup script once
+  ansible.builtin.command: "{{ backup_script_dir }}/backup_db.sh"
+  changed_when: true
+
+- name: run mediawiki filesystem backup script once
+  ansible.builtin.command: "{{ backup_script_dir }}/backup_mediawiki_fs.sh"
+  changed_when: true
